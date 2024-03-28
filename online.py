@@ -5,11 +5,13 @@ import numpy as np
 import pandas as pd
 import requests
 import streamlit as st
-from scipy.special import expit
+
+# from scipy.special import expit
 
 st.set_page_config(page_title="Raw Materials Searching System", page_icon=":building_construction:")
 
-
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 # Function to download pickle files from GitHub
 @st.cache_resource
 def download_pickle_from_github(url):
@@ -116,7 +118,7 @@ def predict_clay_match(buyer_Quality, buyer_price, buyer_availability, num_predi
         prediction_input = scaler.transform(prediction_input)
         prediction_prob = clay_model.predict_proba(prediction_input)[0]
         # Apply sigmoid function to smooth out probabilities
-        prediction_prob = expit(prediction_prob)
+        prediction_prob = sigmoid(prediction_prob)
         prediction = 1 if prediction_prob[1] >= 0.63 else 0  # Apply threshold for classification
         predictions.append(prediction)
         suppliers.append(supplier)
@@ -153,7 +155,6 @@ def predict_ppc_match(buyer_price, buyer_availability, buyer_psi, buyer_pozzolan
 
     return predictions, suppliers
 
-
 def predict_match(buyer_price, buyer_availability, buyer_steel_rod_grade, buyer_yield_strength, buyer_tensile_strength, buyer_elongation, buyer_sulphur, buyer_carbon, buyer_silicon, num_predictions=4):
     predictions = []
     suppliers = []
@@ -166,7 +167,7 @@ def predict_match(buyer_price, buyer_availability, buyer_steel_rod_grade, buyer_
         input_features = [buyer_price, buyer_availability, buyer_steel_rod_grade, buyer_yield_strength, buyer_tensile_strength, buyer_elongation, buyer_sulphur, buyer_carbon, buyer_silicon, supplier['Supplier_Price'], supplier['Supplier_Availability'], supplier['Supplier_Steel_Rod_Grade(W)'], supplier['Supplier_Yield_Strength_Mpa'], supplier['Supplier_Tensile_Strength_Mpa'], supplier['Supplier_Elongation'], supplier['Sulphar_y'], supplier['Supplier_Average_Carbon_%'], supplier['Supplier_Average_Silicon_%']]
         prediction_input = np.array([input_features])
         prediction_prob = model.predict_proba(prediction_input)[0]
-        prediction_prob = expit(prediction_prob)
+        prediction_prob = sigmoid(prediction_prob)
         prediction = 1 if prediction_prob[1] >= 0.50 else 0  # Apply threshold for classification
         predictions.append(prediction)
         suppliers.append(supplier)
@@ -177,11 +178,11 @@ def predict_match(buyer_price, buyer_availability, buyer_steel_rod_grade, buyer_
 # Streamlit UI
 def main():
 
-    st.title("Raw Materials Searching System")
+    st.title("List Of Suppliers")
 
-    app_selection = st.sidebar.selectbox("Select Material", ["Sand Matching", "Dredging Sand Matching", "Clay Brick Matching", "PPC Cement Matching", "TMT Rod Matching"])
+    app_selection = st.sidebar.selectbox("Select Material", ["Sand", "Dredging Sand", "Clay Brick", "PPC Cement", "TMT Rod"])
 
-    if app_selection == "Sand Matching":
+    if app_selection == "Sand":
         st.header("Sand Matching Between Buyer And Supplier")
 
         # Input fields for user
@@ -212,7 +213,7 @@ def main():
                 for i, (prediction, supplier) in enumerate(zip(predictions, suppliers), start=1):
                     st.write(f"Search List {i}:")
                     if prediction >= 63:
-                        st.success(f"Match Score: {prediction:.2f}%")
+                        st.success(f"KPI Score: {prediction:.2f}%")
                         st.subheader("Buyer Details:")
                         st.info("Price: {}\nAvailability: {}\nClay Content (%): {}\nClay Lump (%): {}\nFM: {}".format(
                             buyer_details["Price"],
@@ -231,15 +232,15 @@ def main():
                             supplier['Supplier_FM']
                         ))
 
-                        st.subheader("Overall Quality Match:")
-                        st.success(f"Overall Quality Match between Buyer and Supplier: {prediction:.2f}%")
+                        st.subheader("Overall KPI Match:")
+                        st.success(f"Overall KPI Match between Buyer and Supplier: {prediction:.2f}%")
 
                     else:
-                        st.error(f"No match found. Match Score: {prediction:.2f}%")
+                        st.error(f"No match found. KPI Match Score: {prediction:.2f}%")
 
                     st.write("---")
 
-    elif app_selection == "Dredging Sand Matching":
+    elif app_selection == "Dredging Sand":
         st.header("Dredging Sand Matching Between Buyer And Supplier")
 
         # Input fields for user
@@ -266,7 +267,7 @@ def main():
                 for i, (prediction, supplier) in enumerate(zip(predictions, suppliers), start=1):
                     st.write(f"Search List {i}:")
                     if prediction >= 0.63:
-                        st.success(f"Match Score: {prediction:.2f}%")
+                        st.success(f"KPI Score: {prediction:.2f}%")
                         st.subheader("Buyer Details:")
                         st.info("Price: {}\nAvailability: {}\nFM: {}".format(
                             buyer_details["Price"],
@@ -281,15 +282,15 @@ def main():
                             supplier['FM_y']
                         ))
 
-                        st.subheader("Overall Quality Match:")
-                        st.success(f"Overall Quality Match between Buyer and Supplier: {prediction:.2f}%")
+                        st.subheader("Overall KPI Match:")
+                        st.success(f"Overall KPI Match between Buyer and Supplier: {prediction:.2f}%")
 
                     else:
                         st.error(f"No match found. Match Score: {prediction:.2f}%")
 
                     st.write("---")
 
-    elif app_selection == "Clay Brick Matching":
+    elif app_selection == "Clay Brick":
         st.header("Clay Brick Matching Between Buyer And Supplier")
 
         # Input fields for user
@@ -312,22 +313,22 @@ def main():
                 st.write(f"Search List {i}:")
                 if predicted_class == 1:
                     # If predicted class is 1, there's a match
-                    st.success(f"Match Score: {predicted_prob[1]:.2f}%")
+                    st.success(f"KPI Score: {predicted_prob[1]:.2f}%")
                     st.subheader("Buyer Details:")
                     st.info("Quality: {}\nPrice: {}\nAvailability: {}".format(
                         buyer_details["Quality"], buyer_details["Price"], buyer_details["Availability"]))
                     st.subheader("Supplier Details:")
                     st.success("Supplier Quality: {}\nSupplier Price: {}\nSupplier Availability: {}".format(
                         supplier['Supplier_Quality'], supplier['Supplier_Price'], supplier['Supplier_Availability']))
-                    st.subheader("Overall Quality Match:")
-                    st.success(f"Overall Quality Match between Buyer and Supplier: {predicted_prob[1]:.2f}%")
+                    st.subheader("Overall KPI Match:")
+                    st.success(f"Overall KPI Match between Buyer and Supplier: {predicted_prob[1]:.2f}%")
                 else:
                     # If predicted class is 0, there's no match
                     no_match_prob = 1 - predicted_prob[0]
                     st.error(f"No match found. Match Score: {no_match_prob:.2f}%")
                 st.write("---")
 
-    elif app_selection == "PPC Cement Matching":
+    elif app_selection == "PPC Cement":
         st.header("PPC Cement Matching Between Buyer And Supplier")
 
         # Input fields for user
@@ -358,7 +359,7 @@ def main():
             for i, (prediction, supplier) in enumerate(zip(predictions, suppliers), start=1):
                 st.write(f"Search List {i}:")
                 if prediction >= 78:
-                    st.success(f"Match Score: {prediction:.2f}%")
+                    st.success(f"KPI Score: {prediction:.2f}%")
                     st.subheader("Buyer Details:")
                     st.info(
                         "Price: {}\nAvailability: {}\nPSI: {}\nPozzolanic Material %: {}\nGypsum %: {}\nClinker %: {}\nSlag/Fly Ash %: {}\nLimestone %: {}".format(
@@ -376,13 +377,13 @@ def main():
                         supplier['Slag/Fly_Ash%_y'], supplier['Limestone%_y']
                     )
                 )
-                st.subheader("Overall Quality Match:")
-                st.success(f"Overall Quality Match between Buyer and Supplier: {prediction:.2f}%")
+                st.subheader("Overall KPI Match:")
+                st.success(f"Overall KPI Match between Buyer and Supplier: {prediction:.2f}%")
             else:
                 st.error(f"No match found. Match Score: {prediction:.2f}%")
             st.write("---")
             
-    elif app_selection == "TMT Rod Matching":
+    elif app_selection == "TMT Rod":
         st.header("TMT Rod Matching Between Buyer And Supplier")
 
         # Input fields for buyer
@@ -420,13 +421,13 @@ def main():
                 st.write(f"Search List {i}:")
                 if predicted_class == 1:
                     # If predicted class is 1, there's a match
-                    st.success(f"Match Score: {predicted_prob[1]:.2f}%")
+                    st.success(f"KPI Score: {predicted_prob[1]:.2f}%")
                     st.subheader("Buyer Details:")
                     st.info("\n".join([f"{k}: {v}" for k, v in buyer_details.items()]))
                     st.subheader("Supplier Details:")
                     st.success("\n".join([f"Supplier_{k}: {v}" for k, v in supplier.items()]))
-                    st.subheader("Overall Match:")
-                    st.success(f"Overall Match between Buyer and Supplier: {predicted_prob[1]:.2f}%")
+                    st.subheader("Overall KPI Match:")
+                    st.success(f"Overall KPI Match between Buyer and Supplier: {predicted_prob[1]:.2f}%")
                 else:
                     # If predicted class is 0, there's no match
                     no_match_prob = 1 - predicted_prob[0]
