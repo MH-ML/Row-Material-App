@@ -98,7 +98,7 @@ def predict_dredging_match(buyer_price, buyer_availability, buyer_fm, num_predic
         # Make prediction
         prediction_input = np.array([[buyer_price, buyer_availability, buyer_fm,
                                        supplier['Supplier_Price'], supplier['Supplier_Availability'], supplier['FM_y']]])
-        prediction = dredging_model.predict(prediction_input)
+        prediction = dredging_model.predict(prediction_input) * 100
         predictions.append(prediction[0])
         suppliers.append(supplier)
 
@@ -118,8 +118,8 @@ def predict_clay_match(buyer_Quality, buyer_price, buyer_availability, num_predi
         prediction_input = scaler.transform(prediction_input)
         prediction_prob = clay_model.predict_proba(prediction_input)[0]
         # Apply sigmoid function to smooth out probabilities
-        prediction_prob = sigmoid(prediction_prob)
-        prediction = 1 if prediction_prob[1] >= 0.63 else 0  # Apply threshold for classification
+        prediction_prob = sigmoid(prediction_prob) * 100
+        prediction = 1 if prediction_prob[1] >= 50 else 0  # Apply threshold for classification
         predictions.append(prediction)
         suppliers.append(supplier)
         predicted_classes.append(prediction)
@@ -167,8 +167,8 @@ def predict_match(buyer_price, buyer_availability, buyer_steel_rod_grade, buyer_
         input_features = [buyer_price, buyer_availability, buyer_steel_rod_grade, buyer_yield_strength, buyer_tensile_strength, buyer_elongation, buyer_sulphur, buyer_carbon, buyer_silicon, supplier['Supplier_Price'], supplier['Supplier_Availability'], supplier['Supplier_Steel_Rod_Grade(W)'], supplier['Supplier_Yield_Strength_Mpa'], supplier['Supplier_Tensile_Strength_Mpa'], supplier['Supplier_Elongation'], supplier['Sulphar_y'], supplier['Supplier_Average_Carbon_%'], supplier['Supplier_Average_Silicon_%']]
         prediction_input = np.array([input_features])
         prediction_prob = model.predict_proba(prediction_input)[0]
-        prediction_prob = sigmoid(prediction_prob)
-        prediction = 1 if prediction_prob[1] >= 0.50 else 0  # Apply threshold for classification
+        prediction_prob = sigmoid(prediction_prob) * 100
+        prediction = 1 if prediction_prob[1] >= 50 else 0  # Apply threshold for classification
         predictions.append(prediction)
         suppliers.append(supplier)
         predicted_classes.append(prediction)
@@ -188,11 +188,11 @@ def main():
         # Input fields for user
         st.sidebar.header("Enter Buyer Details")
         buyer_details = {
-            "Price": st.sidebar.number_input("Price"),
-            "Availability": st.sidebar.number_input("Availability"),
-            "Clay Content (%)": st.sidebar.number_input("Clay Content (%)"),
-            "Clay Lump (%)": st.sidebar.number_input("Clay Lump (%)"),
-            "FM": st.sidebar.number_input("FM")
+            "Price": st.sidebar.number_input("Price (500 to 10000 standard)"),
+            "Availability": st.sidebar.number_input("Availability (200 to 5000 standaed)"),
+            "Clay Content (%)": st.sidebar.number_input("Clay Content (%) (1 to 50 standard)"),
+            "Clay Lump (%)": st.sidebar.number_input("Clay Lump (%) (0.1 to 0.30 standard)"),
+            "FM": st.sidebar.number_input("FM (0 to 30 standard)")
         }
 
         # Prediction button
@@ -212,7 +212,7 @@ def main():
 
                 for i, (prediction, supplier) in enumerate(zip(predictions, suppliers), start=1):
                     st.write(f"Search List {i}:")
-                    if prediction >= 63:
+                    if prediction >= 50:
                         st.success(f"KPI Score: {prediction:.2f}%")
                         st.subheader("Buyer Details:")
                         st.info("Price: {}\nAvailability: {}\nClay Content (%): {}\nClay Lump (%): {}\nFM: {}".format(
@@ -246,9 +246,9 @@ def main():
         # Input fields for user
         st.sidebar.header("Enter Buyer Details")
         buyer_details = {
-            "Price": st.sidebar.number_input("Price"),
-            "Availability": st.sidebar.number_input("Availability"),
-            "FM": st.sidebar.number_input("FM")
+            "Price": st.sidebar.number_input("Price (1000 to 1899 standard)"),
+            "Availability": st.sidebar.number_input("Availability ( 800 to 1700 standard)"),
+            "FM": st.sidebar.number_input("FM (0.01 to 5.0)")
         }
 
         # Prediction button
@@ -265,8 +265,11 @@ def main():
                 st.subheader("Dashboard:")
 
                 for i, (prediction, supplier) in enumerate(zip(predictions, suppliers), start=1):
+                        
                     st.write(f"Search List {i}:")
-                    if prediction >= 0.63:
+                    if prediction > 100.00:
+                        st.error("No supplier information available for the given inputs.")
+                    elif prediction >= 50:
                         st.success(f"KPI Score: {prediction:.2f}%")
                         st.subheader("Buyer Details:")
                         st.info("Price: {}\nAvailability: {}\nFM: {}".format(
@@ -297,8 +300,8 @@ def main():
         st.sidebar.header("Enter Buyer Details")
         buyer_details = {
             "Quality": st.sidebar.number_input("Input Grade (1 for Grade A 2 for Grade B)"),
-            "Price": st.sidebar.number_input("Price"),
-            "Availability": st.sidebar.number_input("Availability"),
+            "Price": st.sidebar.number_input("Price (500 to)"),
+            "Availability": st.sidebar.number_input("Availability (700 to 500 standard)"),
         }
 
         # Prediction button
@@ -313,7 +316,7 @@ def main():
                 st.write(f"Search List {i}:")
                 if predicted_class == 1:
                     # If predicted class is 1, there's a match
-                    st.success(f"KPI Score: {predicted_prob[1]:.2f}%")
+                    st.success(f"KPI Score: {predicted_prob[1]:.0f}%")
                     st.subheader("Buyer Details:")
                     st.info("Quality: {}\nPrice: {}\nAvailability: {}".format(
                         buyer_details["Quality"], buyer_details["Price"], buyer_details["Availability"]))
@@ -321,11 +324,11 @@ def main():
                     st.success("Supplier Quality: {}\nSupplier Price: {}\nSupplier Availability: {}".format(
                         supplier['Supplier_Quality'], supplier['Supplier_Price'], supplier['Supplier_Availability']))
                     st.subheader("Overall KPI Match:")
-                    st.success(f"Overall KPI Match between Buyer and Supplier: {predicted_prob[1]:.2f}%")
+                    st.success(f"Overall KPI Match between Buyer and Supplier: {predicted_prob[1]:.0f}%")
                 else:
                     # If predicted class is 0, there's no match
-                    no_match_prob = 1 - predicted_prob[0]
-                    st.error(f"No match found. Match Score: {no_match_prob:.2f}%")
+                    no_match_prob = 1 - predicted_prob[0] * 100
+                    st.error(f"No match found. Match Score: {no_match_prob:.0f}%")
                 st.write("---")
 
     elif app_selection == "PPC Cement":
@@ -338,7 +341,7 @@ def main():
             "Availability": st.sidebar.number_input("Availability (201 to 400 standard)"),
             "PSI": st.sidebar.number_input("PSI (5001 to 6998 standard)"),
             "Pozzolanic Material %": st.sidebar.number_input("Pozzolanic Material % (0 to 100 %)"),
-            "Gypsum %": st.sidebar.number_input("Gypsum %"),
+            "Gypsum %": st.sidebar.number_input("Gypsum % (5 to 20 standard)"),
             "Clinker %": st.sidebar.number_input("Clinker % (70 to 75% Standard)"),
             "Slag/Fly Ash %": st.sidebar.number_input("Slag/Fly Ash %(0 to 6% standard)"),
             "Limestone %": st.sidebar.number_input("Limestone % (20 to 30% standard)")
@@ -358,7 +361,7 @@ def main():
             st.subheader("Dashboard:")
             for i, (prediction, supplier) in enumerate(zip(predictions, suppliers), start=1):
                 st.write(f"Search List {i}:")
-                if prediction >= 78:
+                if prediction >= 70:
                     st.success(f"KPI Score: {prediction:.2f}%")
                     st.subheader("Buyer Details:")
                     st.info(
@@ -390,7 +393,7 @@ def main():
         st.sidebar.header("Enter Buyer Details")
         buyer_details = {
             "Price": st.sidebar.number_input("Price (min 50k )"),
-            "Availability": st.sidebar.number_input("Availability"),
+            "Availability": st.sidebar.number_input("Availability (500 to 5000 Standard)"),
             "Grade": st.sidebar.number_input("Steel Rod Grade(W) (500 to 700)"),
             "Yeild_Strength": st.sidebar.number_input("Yield Strength (480 to 520 standard)"),
             "Tensile_Strength": st.sidebar.number_input("Tensile Strength (530 to 570 standard)"),
@@ -421,17 +424,17 @@ def main():
                 st.write(f"Search List {i}:")
                 if predicted_class == 1:
                     # If predicted class is 1, there's a match
-                    st.success(f"KPI Score: {predicted_prob[1]:.2f}%")
+                    st.success(f"KPI Score: {predicted_prob[1]:0f}%")
                     st.subheader("Buyer Details:")
                     st.info("\n".join([f"{k}: {v}" for k, v in buyer_details.items()]))
                     st.subheader("Supplier Details:")
                     st.success("\n".join([f"Supplier_{k}: {v}" for k, v in supplier.items()]))
                     st.subheader("Overall KPI Match:")
-                    st.success(f"Overall KPI Match between Buyer and Supplier: {predicted_prob[1]:.2f}%")
+                    st.success(f"Overall KPI Match between Buyer and Supplier: {predicted_prob[1]:.0f}%")
                 else:
                     # If predicted class is 0, there's no match
-                    no_match_prob = 1 - predicted_prob[0]
-                    st.error(f"No match found. Match Score: {no_match_prob:.2f}%")
+                    no_match_prob = 1 - predicted_prob[0] * 100
+                    st.error(f"No match found. Match Score: {no_match_prob:.0f}%")
                 st.write("---")
 
 if __name__ == "__main__":
